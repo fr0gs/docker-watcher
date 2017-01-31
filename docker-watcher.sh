@@ -15,11 +15,10 @@ NC='\033[0m' # No Color
 
 
 # Check the number of arguments.
-if [ "$#" -ne 4 ]; then
-    echo "usage: ./docker-watcher.sh -d|--discovery <discovery_period> -t|--timeperiod <period>"
+if [ "$#" -ne 6 ]; then
+    echo "usage: ./docker-watcher.sh -d|--discovery <discovery_period> -t|--timeperiod <period> -r|--rotate <yes/no>"
     exit 1
 fi
-
 
 # Loop through arguments and assign variables.
 while [ "$#" -gt 1 ];
@@ -36,6 +35,12 @@ while [ "$#" -gt 1 ];
       TIME_PERIOD="$2" # Time in seconds for each logging process to start rotating logs. (i.e. 1 pcap/each 10 seconds)
       shift
       ;;
+
+      -r|--rotate)
+      ROTATE_LOGS="$2" # Whether or not rotate logs.
+      shift
+      ;;
+
       --default)
       DEFAULT=YES
       ;;
@@ -81,7 +86,7 @@ do
           cname=$(docker inspect -f '{{ .Name }}' ${container} | sed "s/\\///g")
           echo -e "${RED}[+] ${GREEN}Container ${cname} using network interface: ${i} not being observed, adding it.${NC}"
           CONTAINERS+=($i)
-          ./write-pcap-file.sh -c $cname -i $i -t $TIME_PERIOD &
+          ./write-pcap-file.sh -c $cname -i $i -t $TIME_PERIOD -r $ROTATE_LOGS &
         fi
       fi
   	done

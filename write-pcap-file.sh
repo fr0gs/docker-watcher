@@ -6,13 +6,9 @@ if [ ! -f /usr/sbin/tcpdump ]; then
     exit -1
 fi
 
-# Check the number of arguments.
-if [ "$#" -ne 6 ]; then
-    echo "usage: ./write-pcap-file.sh -c|--container <container-name> -i|--interface <network-interface> -t|--timeperiod <period>"
-    exit 1
-fi
 
 BASE_DIR=$PWD"/pcap/"
+ROTATE="no"
 
 # Loop through arguments and assign variables.
 while [ "$#" -gt 1 ];
@@ -34,6 +30,12 @@ while [ "$#" -gt 1 ];
       PERIOD="$2"
       shift
       ;;
+
+      -r|--rotate)
+      ROTATE="$2"
+      shift
+      ;;
+
       --default)
       DEFAULT=YES
       ;;
@@ -48,4 +50,9 @@ mkdir -p $BASE_DIR$CONTAINER
 
 # Start capturing traffic in the given interface.
 # (-s 0) captures full packets. This is slower but there will be no incomplete packets.
-tcpdump -s 0 -i $INTERFACE -G $PERIOD -w $BASE_DIR$CONTAINER"/"$CONTAINER"_"$INTERFACE"_%Y-%m-%d_%H:%M:%S.pcap"
+
+if [ $ROTATE == "yes" ]; then
+  tcpdump -s 0 -i $INTERFACE -G $PERIOD -w $BASE_DIR$CONTAINER"/"$CONTAINER"_"$INTERFACE"_%Y-%m-%d_%H:%M:%S.pcap"
+else
+  tcpdump -s 0 -i $INTERFACE -w $BASE_DIR$CONTAINER"/"$CONTAINER"_"$INTERFACE"_"$(date +'%Y-%m-%d_%H:%M:%S')".pcap"
+fi
