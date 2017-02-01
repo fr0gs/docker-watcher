@@ -27,6 +27,12 @@ This will check the running dockers every 5 seconds and create a new pcap file f
         container1_br-31cc34v_2017-01-31_11:07:14.pcap
       container2/
         container2_br-31cc34v_2017-01-31_11:07:10.pcap
-    br-31cc34v_2017-01-31_11:07:10.pcap
+    network_name_br-31cc34v_2017-01-31_11:07:10.pcap
       ...
 ```
+
+As seen, the file structure allows for easy future processing. Each group of containers connected to the same network (same interface accesible by the host)
+will be created under the same folder named after the interface, and also inside a folder with the container's name.
+The name of the container .pcap files follows the convention of *<container-name>_<network_interface>_<creation_date>*.
+A capture file is created with all the traffic going through a single network interface, while for each container only it's own inbound/outbound traffic is
+logged.

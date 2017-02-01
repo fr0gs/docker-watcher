@@ -80,28 +80,23 @@ trap cleanup SIGINT SIGKILL
 
 
 function analyzeTraffic {
-  # container, interface, base_dir, time_period, rotate_logs, container_ip
+  # container, interface, base_dir, time_period, rotate_logs, container_ip, network_name
   local cont="$1"
   local iface="$2"
   local bdir="$3"
   local tperiod="$4"
   local rlogs="$5"
   local cip="$6"
+  local netname="$7"
 
-  # echo "cont: $cont"
-  # echo "iface: $iface"
-  # echo "bdir: $bdir"
-  # echo "tperiod: $tperiod"
-  # echo "rlogs: $rlogs"
-  # echo "cip: $cip"
-  # echo "++++++++++++++++++++++++"
 
   # Start watching for all traffic on the interface as well.
   containsElement $iface "${interfaces[@]}"
+
   if [ $? != 0 ]; then
     echo -e "${red}[+] ${green}Network interface: ${iface} not being observed, adding it.${nc}"
     interfaces+=($iface)
-    tcpdump -s 0 -i $iface -w $bdir$iface"/"$iface"_"$(date +'%Y-%m-%d_%H:%M:%S')".pcap" 2>/dev/null &
+    tcpdump -s 0 -i $iface -w $bdir$iface"/"$netname"_"$iface"_"$(date +'%Y-%m-%d_%H:%M:%S')".pcap" 2>/dev/null &
   fi
 
 
@@ -143,12 +138,12 @@ do
     host_iface_id=$(docker network inspect -f '{{ if index .Options "com.docker.network.bridge.name" }}{{ index .Options "com.docker.network.bridge.name" }}{{else}}{{ .Id }}{{end}}' ${network_name})
 
     if [ $host_iface_id == "docker0" ]; then
-      analyzeTraffic $container $host_iface_id $base_dir $time_period $rotate_logs $container_ip
+      analyzeTraffic $container $host_iface_id $base_dir $time_period $rotate_logs $container_ip $network_name
     else
       # Find the host interface that connects to the network the docker is running in.
       for host_iface in `netstat -i | grep br | awk '{ print $1 }'`; do
         if [[ "$host_iface_id" == *$(echo $host_iface | awk -F'-' '{ print $2 }')* ]]; then
-          analyzeTraffic $container $host_iface $base_dir $time_period $rotate_logs $container_ip
+          analyzeTraffic $container $host_iface $base_dir $time_period $rotate_logs $container_ip $network_name
         fi
       done
     fi
