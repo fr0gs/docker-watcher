@@ -21,8 +21,12 @@ This will check the running dockers every 5 seconds and create a new pcap file f
 
 ```sh
   pcap/
-    container1/
-      container1_br-31cc34v_2017-01-31_11:07:08.pcap
-      container1_br-31cc34v_2017-01-31_11:07:14.pcap
+    interface1/
+      container1/
+        container1_br-31cc34v_2017-01-31_11:07:08.pcap
+        container1_br-31cc34v_2017-01-31_11:07:14.pcap
+      container2/
+        container2_br-31cc34v_2017-01-31_11:07:10.pcap
+    br-31cc34v_2017-01-31_11:07:10.pcap
       ...
 ```
