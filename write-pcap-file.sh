@@ -1,6 +1,5 @@
 #!/bin/bash
 
-# Check whether or not tcpdump is installed.
 if [ ! -f /usr/sbin/tcpdump ]; then
     echo "error: tcpdump not installed, please install it"
     exit -1
@@ -10,7 +9,7 @@ fi
 BASE_DIR=$PWD"/pcap/"
 ROTATE="no"
 
-# Loop through arguments and assign variables.
+
 while [ "$#" -gt 1 ];
   do
   key="$1"

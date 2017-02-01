@@ -1,2 +1,5 @@
 # The generated pcap folder
 pcap/
+
+# Any pcap file
+*.pcap
