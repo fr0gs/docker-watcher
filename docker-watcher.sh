@@ -67,12 +67,34 @@ function cleanup {
 }
 
 
-# Search a string in an array. The search string is the first argument and the rest are the array elements:
+# Searches a tuple in an array. There is a need to use then
+# external containers array instead of passing it as a parameter because
+# in bash arrays can't be passed as is, but the whole list of elements.
+function containsTuple {
+  local cont="$1"
+  local iface="$2"
+
+  # When array is empty.
+  if [ ${#containers[@]} == 0 ]; then
+    return 1
+  fi
+
+  for ((i=0; i<${#containers[@]}; i+=2)); do
+    if [ $cont == "${containers[i]}" ] && [ $iface == "${containers[i+1]}" ]; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+# Searches a string in an array
 function containsElement {
   local e
   for e in "${@:2}"; do [[ "$e" == "$1" ]] && return 0; done
   return 1
 }
+
 
 # Call the cleanup function when the script is stopped via any of those two signals
 # C-c == SIGINT.
@@ -96,26 +118,25 @@ function analyzeTraffic {
   if [ $? != 0 ]; then
     echo -e "${red}[+] ${green}Network interface: ${iface} not being observed, adding it.${nc}"
     interfaces+=($iface)
-    tcpdump -s 0 -i $iface -w $bdir$iface"/"$netname"_"$iface"_"$(date +'%Y-%m-%d_%H:%M:%S')".pcap" 2>/dev/null &
+    tcpdump -s 0 -i $iface -w $bdir$iface"/"$netname"_"$iface"_"$(date +'%Y-%m-%d_%H:%M:%S')".pcap" &
   fi
 
-
-  containsElement $container "${containers[@]}"
+  containsTuple $cont $iface "${containers[@]}"
 
   if [ $? != 0 ]; then
     cname=$(docker inspect -f '{{ .Name }}' ${cont} | sed "s/\\///g")
     echo -e "${red}[+] ${green}Container ${cname} using network interface: ${iface} not being observed, adding it.${nc}"
     containers+=($cont)
+    containers+=($iface)
 
-    # Check if pcap log directory exists before creating it.
     mkdir -p $bdir$iface"/"$cname
 
     # Start capturing traffic in the given interface.
     # (-s 0) captures full packets. This is slower but there will be no incomplete packets.
     if [[ $rlogs == "yes" ]]; then
-      tcpdump -s 0 -i $iface -G $tperiod -w $bdir$iface"/"$cname"/"$cname"_"$iface"_%Y-%m-%d_%H:%M:%S.pcap" host $cip 2>/dev/null &
+      tcpdump -s 0 -i $iface -G $tperiod -w $bdir$iface"/"$cname"/"$cname"_"$iface"_%Y-%m-%d_%H:%M:%S.pcap" host $cip &
     else
-      tcpdump -s 0 -i $iface -w $bdir$iface"/"$cname"/"$cname"_"$iface"_"$(date +'%Y-%m-%d_%H:%M:%S')".pcap" host $cip 2>/dev/null &
+      tcpdump -s 0 -i $iface -w $bdir$iface"/"$cname"/"$cname"_"$iface"_"$(date +'%Y-%m-%d_%H:%M:%S')".pcap" host $cip &
     fi
   fi
 }
@@ -130,22 +151,28 @@ do
   # won't change. Like this the id is the first
   for container in `docker ps | awk 'NR>1{ print $1 }'`; do
     sleep 1
-    network_name=$(docker inspect -f '{{ range $key, $value := .NetworkSettings.Networks }}{{ $key }}{{end}}' $container) # Assuming there is only one network.
-    container_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{ .IPAddress }}{{end}}' $container)
 
-    # This can be confusing. When the container is running in the bridge network, we can directly know the host_iface
-    # interface by inspecting the network, otherwise we will need to get the Network Id and check which interface matches.
-    host_iface_id=$(docker network inspect -f '{{ if index .Options "com.docker.network.bridge.name" }}{{ index .Options "com.docker.network.bridge.name" }}{{else}}{{ .Id }}{{end}}' ${network_name})
+    # A container can be in several networks
+    network_name=$(docker inspect -f '{{ range $key, $value := .NetworkSettings.Networks }}{{ $key }}+{{end}}' $container | sed s'/.$//' | tr + '\n' )
 
-    if [ $host_iface_id == "docker0" ]; then
-      analyzeTraffic $container $host_iface_id $base_dir $time_period $rotate_logs $container_ip $network_name
-    else
-      # Find the host interface that connects to the network the docker is running in.
-      for host_iface in `netstat -i | grep br | awk '{ print $1 }'`; do
-        if [[ "$host_iface_id" == *$(echo $host_iface | awk -F'-' '{ print $2 }')* ]]; then
-          analyzeTraffic $container $host_iface $base_dir $time_period $rotate_logs $container_ip $network_name
-        fi
-      done
-    fi
+    for net in `echo $network_name`; do
+
+      container_ip=$(docker inspect -f "{{ .NetworkSettings.Networks.${net}.IPAddress }}" $container)
+
+      # This can be confusing. When the container is running in the bridge network, we can directly know the host_iface
+      # interface by inspecting the network, otherwise we will need to get the Network Id and check which interface matches.
+      host_iface_id=$(docker network inspect -f '{{ if index .Options "com.docker.network.bridge.name" }}{{ index .Options "com.docker.network.bridge.name" }}{{else}}{{ .Id }}{{end}}' ${net})
+
+      if [ $host_iface_id == "docker0" ]; then
+        analyzeTraffic $container $host_iface_id $base_dir $time_period $rotate_logs $container_ip $net
+      else
+        # Find the host interface that connects to the network the docker is running in.
+        for host_iface in `netstat -i | grep br | awk '{ print $1 }'`; do
+          if [[ "$host_iface_id" == *$(echo $host_iface | awk -F'-' '{ print $2 }')* ]]; then
+            analyzeTraffic $container $host_iface $base_dir $time_period $rotate_logs $container_ip $net
+          fi
+        done
+      fi
+    done
   done
 done
