@@ -13,6 +13,7 @@ base_dir=$PWD"/pcap/"
 time_period=5
 discovery_period=10
 rotate_logs="no"
+networks="all"
 
 # Ask for sudo permissions to execute (needed for tcpdump)
 [ "$UID" -eq 0 ] || exec sudo "$0" "$@"
@@ -47,6 +48,11 @@ while [ "$#" -gt 1 ];
 
       -r|--rotate)
       rotate_logs="$2" # Whether or not rotate logs.
+      shift
+      ;;
+
+      -n|--network)
+      networks="$2" # Whether or not rotate logs.
       shift
       ;;
 
@@ -149,7 +155,16 @@ do
 
   # Use the container id instead of the name because it is not sure the format of the fields
   # won't change. Like this the id is the first
-  for container in `docker ps | awk 'NR>1{ print $1 }'`; do
+
+  observable_dockers=""
+
+  if [[ "$networks" == "all" ]]; then
+    observable_dockers=$(docker ps | awk 'NR>1{ print $1 }')
+  else
+    observable_dockers=$(docker network inspect -f '{{ range $key, $value := .Containers }}{{ $key }}+{{end}}' $networks | sed s'/.$//' | tr + '\n')
+  fi
+
+  for container in `echo $observable_dockers`; do
     sleep 1
 
     # A container can be in several networks
