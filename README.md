@@ -4,13 +4,14 @@ Keep track of running docker containers and analyze network traffic usage. Logs 
 ## Usage
 
 ```sh
-$ ./docker-watcher.sh -d|--discovery <discovery_time> -t|--t <time_period> -r|--rotate <yes/no> -n <network> (default: all)
+$ ./docker-watcher.sh -d|--discovery <discovery_time> -t|--t <time_period> -r|--rotate <yes/no> -n|--network <network> (default: all) -o|--output <output_folder>
 ```
 
   * **discovery_period**: is the interval time for the script to wait to check if new containers have been started.
   * **time_period**: is the elapsed time to store new traffic dumps.
   * **rotate**: whether or not to rotate logs
-  * **network**: 
+  * **network**: the docker network to observe
+  * **output_folder**: the output folder where pcaps will be stored.
 
 ## Example
 

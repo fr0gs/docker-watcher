@@ -9,7 +9,7 @@ green='\033[1;32m'
 nc='\033[0m' # No Color
 containers=() # Containers already observed
 interfaces=() # Interfaces already observed
-base_dir=$PWD"/pcap/"
+output=$PWD"/pcap/"
 time_period=5
 discovery_period=10
 rotate_logs="no"
@@ -26,7 +26,7 @@ fi
 
 
 if [ "$#" -lt 4 ]; then
-    echo "usage: ./docker-watcher.sh -r|--rotate <yes/no> (default: no) -t|--timeperiod <period> (default: 5) -d|--discovery <discovery_period> (default: 10)"
+    echo "usage: ./docker-watcher.sh -r|--rotate <yes/no> (default: no) -t|--timeperiod <period> (default: 5) -d|--discovery <discovery_period> -o|--output <output_folder>"
     exit 1
 fi
 
@@ -53,6 +53,12 @@ while [ "$#" -gt 1 ];
 
       -n|--network)
       networks="$2" # Whether or not rotate logs.
+      shift
+      ;;
+
+
+      -o|--output)
+      output="$2" # Whether or not rotate logs.
       shift
       ;;
 
@@ -179,12 +185,12 @@ do
       host_iface_id=$(docker network inspect -f '{{ if index .Options "com.docker.network.bridge.name" }}{{ index .Options "com.docker.network.bridge.name" }}{{else}}{{ .Id }}{{end}}' ${net})
 
       if [ $host_iface_id == "docker0" ]; then
-        analyzeTraffic $container $host_iface_id $base_dir $time_period $rotate_logs $container_ip $net
+        analyzeTraffic $container $host_iface_id $output $time_period $rotate_logs $container_ip $net
       else
         # Find the host interface that connects to the network the docker is running in.
         for host_iface in `netstat -i | grep br | awk '{ print $1 }'`; do
           if [[ "$host_iface_id" == *$(echo $host_iface | awk -F'-' '{ print $2 }')* ]]; then
-            analyzeTraffic $container $host_iface $base_dir $time_period $rotate_logs $container_ip $net
+            analyzeTraffic $container $host_iface $output $time_period $rotate_logs $container_ip $net
           fi
         done
       fi
