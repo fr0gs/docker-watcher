@@ -170,6 +170,11 @@ do
     observable_dockers=$(docker network inspect -f '{{ range $key, $value := .Containers }}{{ $key }}+{{end}}' $networks | sed s'/.$//' | tr + '\n')
   fi
 
+  if [ -z "$observable_dockers" ]; then
+    echo "Error docker-watcher: the provided network does not exist or has no containers running."
+    exit 1
+  fi
+
   for container in `echo $observable_dockers`; do
     sleep 1
 
